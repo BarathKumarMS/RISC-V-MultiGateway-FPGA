@@ -12,85 +12,134 @@ Xilinx Artix-7 FPGA using Xilinx Vivado.
 
 ## Overview
 
-This project explores a RISC-V based multi-gateway embedded system
-implemented on a Digilent Arty-7 FPGA.
+This project presents a RISC-V based multi-gateway embedded computer
+implemented on a low-cost Digilent Arty Artix-7 FPGA board.
 
-The design is based on the open-source UltraEmbedded RISC-V SoC platform
-and was used to study and evaluate:
+The design extends the openly available UltraEmbedded RV32IM core and
+companion SoC/peripheral wrapper with board-level clocking, external
+DDR3 memory, and AXI clock-domain-crossing infrastructure.
 
--   RISC-V processor integration
--   AXI4 and AXI4-Lite communication
--   DDR3 memory integration using Xilinx MIG
--   Clock-domain crossing
--   FPGA clock generation
--   Peripheral integration
--   Hardware verification
--   FPGA synthesis and implementation
+The project focuses on the system surrounding the RISC-V core,
+including:
 
-The platform combines a RISC-V RV32IM processor with a DDR3 memory
-subsystem and an AXI4-Lite peripheral fabric for embedded gateway
-applications.
+-   External DDR3 memory integration using Xilinx MIG
+-   AXI4 and AXI4-Lite interconnect
+-   AXI clock-domain crossing
+-   Artix-7 PLL-based clock generation
+-   UART and SPI interfaces
+-   GPIO
+-   Timer and interrupt controller
+-   Debug bridge
+-   Project-specific Verilog verification
+-   Post-implementation FPGA resource and power evaluation
 
 ------------------------------------------------------------------------
 
 ## System Architecture
 
-The system integrates a RISC-V processor with memory, AXI
-infrastructure, clock-domain crossing logic, and multiple peripheral
-interfaces.
+The platform is organized into three main functional domains:
 
-``` text
-                         +----------------------+
-                         |     RISC-V RV32IM    |
-                         |       Processor      |
-                         +----------+-----------+
-                                    |
-                                  AXI4
-                                    |
-                    +---------------+---------------+
-                    |                               |
-              +-----v-----+                   +-----v-----+
-              | DDR3 / MIG|                   | AXI Fabric|
-              |  Memory   |                   |           |
-              +-----------+                   +-----+-----+
-                                                    |
-                              +---------------------+-------------------+
-                              |          AXI4-Lite Peripheral Fabric  |
-                              |                                         |
-                         +----v----+ +------+ +------+ +------+ +------+
-                         |  UART   | | SPI  | | GPIO | |Timer | | IRQ  |
-                         +---------+ +------+ +------+ +------+ +------+
-                                                    |
-                                              +-----v-----+
-                                              |   Debug   |
-                                              |  Bridge   |
-                                              +-----------+
+1.  **Clock-generation domain** based on the Artix-7 PLL
+2.  **Memory domain** containing the DDR3 MIG controller and AXI CDC
+    buffer
+3.  **Processor domain** containing the RISC-V core, AXI interconnect,
+    and peripheral controllers
 
-                         Clock domains connected
-                           through AXI CDC logic
-```
+![RISC-V Multi-Gateway SoC Architecture](images/architecture.png)
+
+### Principal Hardware Blocks
+
+  -----------------------------------------------------------------------
+  Block                               Role
+  ----------------------------------- -----------------------------------
+  Artix-7 PLL                         Generates CPU, DDR, system, and
+                                      calibration clock domains
+
+  DDR3 MIG                            Provides the external memory path
+                                      through AXI4
+
+  AXI CDC Buffer                      Bridges processor and DDR clock
+                                      domains
+
+  RISC-V RV32IM Core                  Executes firmware and issues
+                                      memory/peripheral transactions
+
+  AXI4 / AXI4-Lite Fabric             Routes processor traffic to memory
+                                      and peripherals
+
+  UART / SPI                          Serial and synchronous peripheral
+                                      interfaces
+
+  GPIO                                General-purpose digital
+                                      input/output
+
+  Timer / Interrupt Controller        Timing reference and interrupt
+                                      aggregation
+
+  Debug Bridge                        Firmware loading and system
+                                      inspection
+  -----------------------------------------------------------------------
 
 ------------------------------------------------------------------------
 
-## Main Features
+## RISC-V Processor
 
-### RISC-V Processor
+The processor foundation is the UltraEmbedded RV32IM RISC-V core.
 
--   32-bit RISC-V RV32IM processor
--   RISC-V based embedded SoC architecture
--   Processor integrated with the SoC peripheral and memory
-    infrastructure
+The processor contains the standard five-stage organization used by the
+upstream implementation:
 
-### Memory Subsystem
+-   Instruction Fetch
+-   Instruction Decode
+-   Execute
+-   Memory Access
+-   Write Back
 
--   DDR3 external memory interface
--   Xilinx 7-Series Memory Interface Generator (MIG)
+![RV32IM Pipeline](images/rv32im_pipeline.png)
+
+> The RV32IM processor shown above is part of the upstream UltraEmbedded
+> RISC-V project. This repository does not claim ownership of the
+> upstream processor implementation. The project-specific work focuses
+> on the surrounding FPGA integration, memory, clocking, CDC,
+> verification, and implementation evaluation.
+
+------------------------------------------------------------------------
+
+## Memory and Clocking
+
+### DDR3 Memory
+
+The external memory path is implemented using the Xilinx 7-Series Memory
+Interface Generator (MIG).
+
+The DDR3 subsystem provides:
+
+-   DDR3 initialization and calibration
 -   AXI4 memory interface
--   AXI clock-domain crossing infrastructure
+-   External memory connectivity
+-   Dedicated DDR clock domain
 
-### Peripheral Fabric
+### Clock Generation
 
-The AXI4-Lite peripheral subsystem includes:
+A dedicated Artix-7 PLL stage derives the required clock domains from
+the board's 100 MHz oscillator.
+
+The clocking structure provides independent domains for:
+
+-   CPU
+-   DDR
+-   System
+-   Calibration
+
+Because the processor and DDR3 controller operate in different clock
+domains, an AXI clock-domain-crossing buffer is used to safely bridge
+the two domains.
+
+------------------------------------------------------------------------
+
+## Peripheral Subsystem
+
+The SoC peripheral fabric contains:
 
 -   UART
 -   SPI
@@ -99,82 +148,90 @@ The AXI4-Lite peripheral subsystem includes:
 -   Interrupt controller
 -   Debug bridge
 
-### Clocking
-
-The FPGA implementation includes dedicated clock-generation
-infrastructure using Artix-7 clocking resources.
-
-------------------------------------------------------------------------
-
-## FPGA Platform
-
-  Parameter          Configuration
-  ------------------ --------------------
-  Board              Digilent Arty-7
-  FPGA Family        Xilinx Artix-7
-  Device             XC7A35T-1CSG324-1L
-  HDL                Verilog HDL
-  FPGA Tool          Xilinx Vivado
-  Processor          RISC-V RV32IM
-  External Memory    DDR3
-  Bus Architecture   AXI4 / AXI4-Lite
+The AXI4-Lite interface provides register-based access between the
+RISC-V processor and the peripheral controllers.
 
 ------------------------------------------------------------------------
 
 ## Verification
 
-A project-level Verilog testbench is included in:
+A project-specific Verilog testbench is included in:
 
 ``` text
 testbench/top_tb.v
 ```
 
-The testbench was used for system-level functional verification.
+The verification environment was developed as a waveform-based
+system-level testbench rather than using the SystemC/Verilator flow
+shipped with the upstream baseline.
 
-The verification environment includes mechanisms for exercising:
+The testbench exercises:
 
--   Clock generation
--   Reset generation
--   Instruction bus activity
--   Data bus activity
--   Processor execution
--   UART activity
--   Memory transactions
--   DDR3-side interface connectivity
--   Peripheral activity
+-   Clock and reset generation
+-   Instruction fetch activity
+-   Memory-write traffic
+-   UART framing/activity
+-   DDR3-side signaling
+-   Processor/system-level behavior
 
-The simulation environment uses response stubs for parts of the DDR3
-interface to make system-level simulation practical while checking the
-connectivity and behavior of the memory interface.
+### Simulation Result
 
-> The DDR3-side verification does not represent a complete physical DDR3
-> timing model. Sustained high-throughput DDR3 operation and worst-case
-> memory timing were not characterized in the reported evaluation.
+![Simulation Waveform](images/simulation_waveform.png)
+
+The waveform provides evidence of processor activity, memory
+transactions, UART activity, and DDR3-side signaling during a single
+simulation run.
+
+> The DDR3-side verification uses response stubs rather than a complete
+> physical DDR3 timing model. Therefore, the simulation should be
+> interpreted as system-level interface/functional verification rather
+> than complete physical DDR3 validation.
 
 ------------------------------------------------------------------------
 
-## FPGA Implementation
+## FPGA Platform
 
-Following simulation, the design was taken through:
+  Parameter         Configuration
+  ----------------- -----------------------
+  Board             Digilent Arty Artix-7
+  FPGA Family       Xilinx Artix-7
+  Device            XC7A35T-1CSG324-1L
+  HDL               Verilog HDL
+  FPGA Tool         Xilinx Vivado
+  Processor         RISC-V RV32IM
+  External Memory   DDR3
+  Interconnect      AXI4 / AXI4-Lite
+
+------------------------------------------------------------------------
+
+## FPGA Implementation Flow
+
+The design was taken through the following FPGA development flow:
 
 ``` text
-RTL
- |
- +--> Simulation
- |
- +--> Synthesis
- |
- +--> Placement
- |
- +--> Routing
- |
- +--> Resource Analysis
- |
- +--> Power Estimation
+RTL Design
+    |
+    v
+Functional Simulation
+    |
+    v
+Synthesis
+    |
+    v
+Placement
+    |
+    v
+Routing
+    |
+    v
+Resource Analysis
+    |
+    v
+Power Analysis
 ```
 
-The complete FPGA implementation flow was performed using Xilinx Vivado
-targeting the Artix-7 XC7A35T-1CSG324-1L device.
+The implementation targets the Xilinx Artix-7 XC7A35T-1CSG324-1L device
+using Xilinx Vivado.
 
 ------------------------------------------------------------------------
 
@@ -182,61 +239,52 @@ targeting the Artix-7 XC7A35T-1CSG324-1L device.
 
 ### Resource Utilization
 
-  Resource           Used   Utilization
-  -------------- -------- -------------
-  LUTs             13,191        63.42%
-  Flip-Flops        9,998        24.03%
-  Block RAM             5        10.00%
-  DSP48 Slices          4         4.44%
-  BUFG                  3           ---
-  MMCM                  1           ---
-  PLL                   2           ---
+  Resource         Used   Utilization
+  ------------ -------- -------------
+  LUTs           13,191        63.42%
+  Flip-Flops      9,998        24.03%
+  Block RAM           5        10.00%
+  DSP48               4         4.44%
+  BUFG                3           ---
+  MMCM                1           ---
+  PLL                 2           ---
 
-The LUT utilization is primarily associated with the processor datapath,
-AXI infrastructure, peripheral control logic, and associated
-sequential/combinational logic.
+![FPGA Resource Utilization](images/resource_utilization.png)
+
+The larger LUT count reflects the complete platform rather than the
+processor core alone. The implementation includes the RISC-V processor,
+DDR3/MIG infrastructure, AXI fabric, clocking, CDC logic, peripherals,
+and debug infrastructure.
 
 BRAM and DSP utilization remain comparatively low, leaving potential
-FPGA resources for future hardware accelerators and additional
-buffering.
+resources for future hardware accelerators and additional buffering.
 
 ------------------------------------------------------------------------
 
-## Power and Thermal Results
+## Power Analysis
 
-### Estimated Power
+The reported post-implementation on-chip power is:
 
-``` text
-Estimated on-chip power: 0.786 W
-```
+**0.786 W**
 
-### Thermal Margin
+![Vivado Power Analysis](images/power_analysis.png)
 
-``` text
-Reported thermal margin: 71.2 °C
-```
-
-The power value is a post-implementation Vivado estimate and should not
+The power figure is a Vivado post-implementation estimate and should not
 be interpreted as a board-level measured power value.
 
+The reported thermal margin is:
+
+**71.2 °C**
+
 ------------------------------------------------------------------------
 
-## Resource Analysis
+## Synthesized Design
 
-The implementation demonstrates that a complete gateway-capable RISC-V
-platform can be realized on a relatively modest Artix-7 FPGA.
+The synthesized design hierarchy illustrates the integration of the
+RISC-V processor, memory infrastructure, AXI interconnect, peripheral
+subsystem, and FPGA-specific logic.
 
-The major resource consumption is concentrated in LUTs and flip-flops,
-while BRAM and DSP usage remains comparatively low.
-
-This provides potential room for future additions such as:
-
--   Hardware accelerators
--   Signal-processing blocks
--   Cryptographic accelerators
--   Lightweight AI inference
--   Additional memory buffering
--   Additional communication peripherals
+![Synthesized Netlist](images/synthesized_netlist.png)
 
 ------------------------------------------------------------------------
 
@@ -259,26 +307,29 @@ RISC-V-MultiGateway-FPGA/
 │       ├── fpga_top.v
 │       └── top.v
 │
+├── images/
+│   ├── architecture.png
+│   ├── power_analysis.png
+│   ├── resource_utilization.png
+│   ├── rv32im_pipeline.png
+│   ├── simulation_waveform.png
+│   └── synthesized_netlist.png
+│
 ├── ip/
 │   ├── axi_cdc_buffer/
 │   │   └── axi_cdc_buffer.xci
-│   │
 │   └── mig_axis/
 │       └── mig_axis.xci
 │
 ├── testbench/
 │   └── top_tb.v
 │
-├── vivado/
-│   └── block_design/
-│       └── design_1.bd
-│
 ├── upstream/
 │   └── riscv_soc/
 │
-├── images/
-│
-├── results/
+├── vivado/
+│   └── block_design/
+│       └── design_1.bd
 │
 ├── .gitignore
 ├── .gitmodules
@@ -287,43 +338,26 @@ RISC-V-MultiGateway-FPGA/
 
 ------------------------------------------------------------------------
 
-## Directory Description
+## Repository Contents
 
 ### `constraints/`
 
-Contains FPGA pin and timing constraints.
-
-``` text
-constraints/
-└── arty_revb.xdc
-```
-
-The constraint file targets the Arty-7 board and defines the required
-FPGA pin assignments and clock constraints.
+Contains the FPGA pin and timing constraints for the target Arty-7
+platform.
 
 ### `fpga/`
 
-Contains the FPGA-specific Verilog implementation.
+Contains project-specific FPGA RTL for:
 
-Important modules include:
-
-``` text
-artix7_pll.v
-arty_ddr.v
-axi4_cdc.v
-dbg_bridge.v
-dbg_bridge_fifo.v
-dbg_bridge_uart.v
-fpga_top.v
-top.v
-```
-
-These modules provide FPGA-level clocking, DDR interface integration,
-AXI CDC infrastructure, debug connectivity, and top-level integration.
+-   Artix-7 clock generation
+-   DDR interface integration
+-   AXI CDC
+-   Debug infrastructure
+-   FPGA top-level integration
 
 ### `ip/`
 
-Contains the Xilinx Vivado IP configuration files.
+Contains the Xilinx Vivado IP configuration files:
 
 ``` text
 ip/
@@ -333,60 +367,52 @@ ip/
     └── mig_axis.xci
 ```
 
-The `.xci` files contain the configuration information required to
-recreate the corresponding Vivado IP.
-
-Generated IP implementation artifacts are intentionally excluded from
-the repository.
+Generated IP build artifacts are intentionally excluded from version
+control.
 
 ### `testbench/`
 
-Contains the project-level simulation testbench.
-
-``` text
-testbench/
-└── top_tb.v
-```
+Contains the project-level Verilog testbench.
 
 ### `vivado/`
 
-Contains the Vivado block-design source used by the project.
-
-``` text
-vivado/
-└── block_design/
-    └── design_1.bd
-```
+Contains the Vivado block-design source.
 
 ### `upstream/`
 
-Contains the upstream RISC-V SoC project as a Git submodule.
+Contains the upstream RISC-V SoC as a Git submodule.
 
-This is intentionally kept separate from the project-specific FPGA
-integration.
+Keeping the upstream project as a submodule makes the boundary between
+upstream source and project-specific integration explicit.
 
 ------------------------------------------------------------------------
 
 ## Upstream Project and Attribution
 
-This project builds upon the open-source UltraEmbedded RISC-V and
-`riscv_soc` projects.
+This project builds upon the open-source UltraEmbedded RISC-V processor
+and `riscv_soc` platform.
 
-The upstream SoC is included as a Git submodule:
+The upstream SoC is included as a Git submodule under:
 
 ``` text
 upstream/riscv_soc/
 ```
 
-The repository therefore does **not** claim ownership of the original
-UltraEmbedded RISC-V processor or SoC implementation.
-
-The upstream source, license information, and copyright notices remain
+The upstream source, copyright notices, and license information remain
 associated with the original project.
 
-The project-specific work focuses on the FPGA integration,
-gateway-oriented system configuration, memory and peripheral
-integration, verification environment, and implementation evaluation.
+This repository does **not** claim ownership of the original
+UltraEmbedded RISC-V processor or SoC implementation.
+
+The project-specific focus is on:
+
+-   FPGA integration
+-   External DDR3 memory integration
+-   Artix-7 clocking
+-   AXI clock-domain crossing
+-   Project-specific verification
+-   FPGA synthesis and implementation
+-   Resource and power evaluation
 
 ------------------------------------------------------------------------
 
@@ -396,7 +422,7 @@ integration, verification environment, and implementation evaluation.
 
 -   RISC-V ISA
 -   RV32IM processor architecture
--   CPU and SoC integration
+-   CPU/SoC integration
 -   Memory subsystem integration
 -   Peripheral architecture
 
@@ -411,7 +437,7 @@ integration, verification environment, and implementation evaluation.
 -   Power estimation
 -   Timing constraints
 
-### Interconnects
+### Interconnect
 
 -   AXI4
 -   AXI4-Lite
@@ -448,10 +474,8 @@ integration, verification environment, and implementation evaluation.
 
 ### Requirements
 
-The project requires:
-
 -   Xilinx Vivado
--   A compatible Vivado version supporting the target Artix-7 device and
+-   Compatible Vivado version supporting the target Artix-7 device and
     included IP
 -   Verilog simulation support
 -   Digilent Arty-7 board for hardware deployment
@@ -514,17 +538,17 @@ excluded from version control.
 
 ------------------------------------------------------------------------
 
-## Current Limitations
+## Limitations
 
-The reported evaluation should be considered a feasibility and
-implementation baseline rather than a complete hardware qualification.
+The reported evaluation should be considered an implementation and
+feasibility baseline rather than a complete hardware qualification.
 
 ### DDR3 Verification
 
 The DDR3-side simulation uses response stubs rather than a complete
 physical DDR3 timing model.
 
-Therefore, the current results do not establish:
+Therefore, the current evaluation does not establish:
 
 -   Sustained high-throughput DDR3 operation
 -   Worst-case DDR3 timing behavior
@@ -533,22 +557,14 @@ Therefore, the current results do not establish:
 
 ### Power
 
-The reported `0.786 W` is a Vivado post-implementation estimate.
-
-It is not a bench-measured power value from the physical Arty-7 board.
+The reported `0.786 W` is a Vivado post-implementation estimate and is
+not a bench-measured board-level power value.
 
 ### Peripheral Stress Testing
 
 The current verification does not constitute a complete concurrent
-stress test of:
-
--   SPI
--   Timer
--   Interrupt
--   UART
--   Memory subsystem
-
-under maximum sustained system load.
+stress test of all peripheral and memory paths under maximum sustained
+system load.
 
 ### Hardware Qualification
 
@@ -558,6 +574,8 @@ remain future work.
 ------------------------------------------------------------------------
 
 ## Future Scope
+
+Potential extensions include:
 
 ### Communication Interfaces
 
@@ -641,7 +659,7 @@ Synthesis               ✓
 Implementation           ✓
 Resource Analysis       ✓
 Power Estimation        ✓
-GitHub Documentation    ✓
+Documentation           ✓
 Hardware Stress Testing Planned
 ```
 
@@ -654,7 +672,8 @@ Hardware Stress Testing Planned
 M.E. VLSI Design and Embedded Systems\
 Anna University -- MIT Campus
 
-GitHub:\
+GitHub:
+
 https://github.com/BarathKumarMS
 
 ------------------------------------------------------------------------
