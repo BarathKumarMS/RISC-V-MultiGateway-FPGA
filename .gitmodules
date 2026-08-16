@@ -1,0 +1,3 @@
+[submodule "upstream/riscv_soc"]
+	path = upstream/riscv_soc
+	url = https://github.com/ultraembedded/riscv_soc.git

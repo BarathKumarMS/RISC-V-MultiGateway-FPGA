@@ -1,0 +1,54 @@
+# ============================================================
+# Vivado generated files
+# ============================================================
+*.jou
+*.log
+*.str
+*.tmp
+*.bak
+*.dcp
+*.bit
+*.ltx
+
+# Vivado generated directories
+.cache/
+.hw/
+.runs/
+.sim/
+.ip_user_files/
+.Xil/
+
+# Generated simulation/build output
+sim/
+simulation/
+synth/
+impl/
+xsim.dir/
+
+# Generated IP output
+*_stub.v
+*_stub.vhdl
+*_sim_netlist.v
+*_sim_netlist.vhdl
+*.veo
+*.vho
+*.xml
+
+# Generated Tcl/config files
+*_xmdf.tcl
+xil_txt.in
+xil_txt.out
+xil_upgrade.in
+xil_upgrade.out
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# IDE/editor files
+.vscode/
+.idea/
